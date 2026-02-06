@@ -15,8 +15,7 @@ export class PostgresDriver implements DbDriver {
       ssl: config.ssl,
       max: 5,
       idleTimeoutMillis: 10_000,
-      statement_timeout: 2_000
-    })
+      statement_timeout: 30000    })
   }
 
   getPool() {
