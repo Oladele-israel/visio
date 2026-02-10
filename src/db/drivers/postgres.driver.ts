@@ -1,21 +1,55 @@
 import { Pool } from 'pg'
-import { DbDriver } from '../db.types'
-import { DbConfig } from '../db.types'
+import { DbDriver, DbConfig } from '../db.types'
 
 export class PostgresDriver implements DbDriver {
-  private pool: Pool
+  private pool!: Pool
 
   async connect(config: DbConfig) {
+    if (!config.host) {
+      throw new Error('Postgres config error: host is required')
+    }
+
+    const ssl = this.resolveSsl(config.ssl)
+
     this.pool = new Pool({
       host: config.host,
       port: config.port,
       database: config.database,
       user: config.user,
       password: config.password,
-      ssl: config.ssl,
+      ssl,
       max: 5,
       idleTimeoutMillis: 10_000,
-      statement_timeout: 30000    })
+      statement_timeout: 30_000,
+      connectionTimeoutMillis: 10_000,
+    })
+
+    try {
+      await this.pool.query('select 1')
+      console.log(
+        `[PostgresDriver] Connected to ${config.host}:${config.port}/${config.database}`
+      )
+    } catch (err: any) {
+      console.error('[PostgresDriver] Connection failed', {
+        host: config.host,
+        port: config.port,
+        database: config.database,
+        ssl: !!ssl,
+        error: err.message,
+      })
+      throw err
+    }
+  }
+
+  private resolveSsl(
+    ssl?: boolean | { rejectUnauthorized?: boolean; [key: string]: any }
+  ): false | { rejectUnauthorized: boolean } {
+    if (!ssl) return false
+    if (ssl === true) return { rejectUnauthorized: false }
+    return {
+      rejectUnauthorized: ssl.rejectUnauthorized ?? false,
+      ...ssl,
+    }
   }
 
   getPool() {
@@ -23,11 +57,11 @@ export class PostgresDriver implements DbDriver {
   }
 
   async query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
-    const result = await this.pool.query(sql, params)
-    return result.rows
+    const { rows } = await this.pool.query(sql, params)
+    return rows
   }
 
   async close() {
-    await this.pool?.end()
+    await this.pool.end()
   }
 }

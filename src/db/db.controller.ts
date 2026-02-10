@@ -5,10 +5,15 @@ import type { DbConfig } from './db.types';
 @Controller('db')
 export class DbController {
 
-    constructor(private readonly dbService: DbService){ }
+    constructor(private readonly dbService: DbService) { }
 
-@Post('connect') 
-async connect(@Body() config: DbConfig) { 
-    await this.dbService.connect(config) 
-    return { status: 'connected' } }
+    @Post('connect')
+    async connect(@Body() config: DbConfig) {
+        return await this.dbService.connect(config)
+    }
 }
+
+
+// Xswd5AMsBhN3l7Lw
+
+// visio test

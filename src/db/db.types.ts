@@ -7,7 +7,10 @@ export interface DbConfig {
   database: string
   user: string
   password: string
-  ssl?: boolean
+    ssl?: boolean | {
+    rejectUnauthorized?: boolean
+    [key: string]: any
+  }
 }
 
 
@@ -16,4 +19,12 @@ export interface DbDriver {
   getPool(): unknown
   query<T = any>(sql: string, params?: any[]): Promise<T[]>
   close(): Promise<void>
+}
+
+
+export interface ConnectionSession {
+  id: string
+  driver: DbDriver
+  createdAt: number
+  lastUsedAt: number
 }

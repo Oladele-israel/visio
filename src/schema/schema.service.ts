@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { DbService } from '../db/db.service'
+import { DbContext } from 'src/db/db.context'
 import { Table, ForeignKey, Column } from './types'
 
 @Injectable()
@@ -8,7 +8,7 @@ export class SchemaService {
   private tables: Table[] = []
   private foreignKeys: ForeignKey[] = []
 
-  constructor(private readonly db: DbService) {}
+  constructor(private readonly db: DbContext) {}
 
   /**
    * Loads and caches the schema graph.
@@ -16,15 +16,20 @@ export class SchemaService {
   async loadSchema(): Promise<Table[]> {
     this.logger.log('Loading schema from DB...')
 
-    this.tables = await this.loadTables()
-    this.foreignKeys = await this.loadForeignKeys()
+    try {
+      this.tables = await this.loadTables()
+      this.foreignKeys = await this.loadForeignKeys()
 
-    for (const table of this.tables) {
-      table.columns = await this.loadColumns(table.name)
+      for (const table of this.tables) {
+        table.columns = await this.loadColumns(table.name)
+      }
+
+      this.logger.log(`Loaded ${this.tables.length} tables.`)
+      return this.tables
+    } catch (error) {
+      this.logger.error('Failed to load schema', error)
+      throw error
     }
-
-    console.log(`Loaded ${this.tables.length} tables.`)
-    return this.tables
   }
 
   /**

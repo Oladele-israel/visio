@@ -1,18 +1,18 @@
 import { Injectable, BadRequestException } from '@nestjs/common'
-import { DbService } from 'src/db/db.service'
+import { DbContext } from 'src/db/db.context'  // Request-scoped DbContext, NOT DbService
 import { QueryParams, QueryResult, RelationQueryInput } from './query.types'
 import { RelationsService } from 'src/relation/relation.service'
 
 @Injectable()
 export class QueryService {
-  constructor(private readonly db: DbService,
+  constructor(
+    private readonly db: DbContext,
     private readonly relationService: RelationsService,
   ) { }
 
   async queryTable(params: QueryParams): Promise<QueryResult> {
     const { tableName, limit = 20, offset = 0, orderBy, filters } = params
 
-    // Basic validation
     if (!tableName) {
       throw new BadRequestException('Table name is required')
     }
@@ -20,7 +20,7 @@ export class QueryService {
       throw new BadRequestException('Limit too large, max 100')
     }
 
-    // Build WHERE clause from filters
+    // Build WHERE clause and parameter array
     let whereClauses: string[] = []
     let values: any[] = []
     let idx = 1
@@ -34,17 +34,16 @@ export class QueryService {
 
     const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : ''
 
-    // Build ORDER BY clause
+    // Build ORDER BY clause, basic sanitization
     let orderSql = ''
     if (orderBy) {
-      // Sanitize column name (basic)
       if (!/^[a-zA-Z0-9_]+$/.test(orderBy.column)) {
         throw new BadRequestException('Invalid order by column')
       }
       orderSql = `ORDER BY "${orderBy.column}" ${orderBy.direction === 'desc' ? 'DESC' : 'ASC'}`
     }
 
-    // Final query
+    // Compose final SQL query with LIMIT and OFFSET
     const sql = `
       SELECT *
       FROM "${tableName}"
@@ -56,64 +55,49 @@ export class QueryService {
 
     values.push(limit, offset)
 
-    const result = await this.db.query(sql, values)
+    const result = await this.db.query<Record<string, any>>(sql, values)
 
-    // Get columns from the first row or empty array
     const columns = result.length > 0 ? Object.keys(result[0]) : []
 
-    return {
-      columns,
-      rows: result,
-    }
+
+    return { columns, rows: result }
   }
 
   async fetchRelated(input: RelationQueryInput): Promise<QueryResult> {
-  const {
-    sourceTable,
-    sourceWhere,
-    targetTable,
-    options,
-  } = input
+    const { sourceTable, sourceWhere, targetTable, options } = input
 
-  const { relations } = await this.relationService.getRelations(sourceTable)
+    const { relations } = await this.relationService.getRelations(sourceTable)
 
-  const relation = relations.find(r =>
-    r.fromTable === targetTable || r.toTable === targetTable
-  )
-
-  if (!relation) {
-    throw new BadRequestException(
-      `No relation between ${sourceTable} and ${targetTable}`,
+    // Find relation where either end matches targetTable
+    const relation = relations.find(
+      r => r.fromTable === targetTable || r.toTable === targetTable,
     )
+
+    if (!relation) {
+      throw new BadRequestException(`No relation between ${sourceTable} and ${targetTable}`)
+    }
+
+    // Fetch source rows to extract FK values
+    const sourceResult = await this.queryTable({
+      tableName: sourceTable,
+      filters: sourceWhere,
+      limit: 100,
+    })
+
+    if (!sourceResult.rows.length) {
+      return { columns: [], rows: [] }
+    }
+
+    // Extract FK from first row (single-row for now)
+    const fkValue = sourceResult.rows[0][relation.fromColumn]
+
+    const filters = { [relation.toColumn]: fkValue }
+
+    return this.queryTable({
+      tableName: targetTable,
+      filters,
+      limit: options?.limit,
+      offset: options?.offset,
+    })
   }
-
-  // 1️⃣ Fetch source rows
-  const sourceResult = await this.queryTable({
-    tableName: sourceTable,
-    filters: sourceWhere,
-    limit: 100, // safe upper bound
-  })
-
-  if (!sourceResult.rows.length) {
-    return { columns: [], rows: [] }
-  }
-
-  // 2️⃣ Extract FK values
-  const fkValues = sourceResult.rows.map(
-    row => row[relation.fromColumn],
-  )
-
-  // 3️⃣ Fetch related rows
-  const filters = {
-    [relation.toColumn]: fkValues[0], // single-row for now
-  }
-
-  return this.queryTable({
-    tableName: targetTable,
-    filters,
-    limit: options?.limit,
-    offset: options?.offset,
-  })
-}
-
 }
