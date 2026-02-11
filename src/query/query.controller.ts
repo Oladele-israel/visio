@@ -28,7 +28,7 @@ export class QueryController {
 
   @Post('relations/query')
   async queryRelations(
-    @Headers('x-session-id') sessionId: string,
+    @Headers('x-session-id') sessionId: string, //todo:extract this into an interceptor
     @Body() body: RelationQueryInput,
   ) {
     this.setDbSession(sessionId)
