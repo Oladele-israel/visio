@@ -11,6 +11,7 @@ export interface DbConfig {
     rejectUnauthorized?: boolean
     [key: string]: any
   }
+  family: number
 }
 
 
@@ -25,6 +26,15 @@ export interface DbDriver {
 export interface ConnectionSession {
   id: string
   driver: DbDriver
+  createdAt: number
+  lastUsedAt: number
+}
+
+
+interface PersistedDbSession {
+  sessionId: string
+  dbType: string
+  encryptedConfig: string
   createdAt: number
   lastUsedAt: number
 }

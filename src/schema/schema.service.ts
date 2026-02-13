@@ -2,7 +2,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DbContext } from 'src/db/db.context';
 import { Table, ForeignKey, Column } from './types';
-import { CacheService } from 'src/cache/cache.service';
+import { CacheService } from 'src/common/clients/cache/cache.service';
 
 @Injectable()
 export class SchemaService {

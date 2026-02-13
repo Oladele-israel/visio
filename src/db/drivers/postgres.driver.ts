@@ -1,6 +1,8 @@
 import { Pool } from 'pg'
 import { DbDriver, DbConfig } from '../db.types'
 
+// when using supabase db use session pooler instead of direct database connection
+
 export class PostgresDriver implements DbDriver {
   private pool!: Pool
 
@@ -22,6 +24,7 @@ export class PostgresDriver implements DbDriver {
       idleTimeoutMillis: 10_000,
       statement_timeout: 30_000,
       connectionTimeoutMillis: 10_000,
+      // family: config.family || 4,
     })
 
     try {

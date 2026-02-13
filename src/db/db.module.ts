@@ -1,13 +1,11 @@
 import { Module } from '@nestjs/common'
 import { DbService } from './db.service'
 import { DbController } from './db.controller';
-import { RedisModule } from 'src/common/clients/redis/redis.module';
-import { RedisSessionStore } from 'src/common/clients/redis/redis-session.store';
 import { DbContext } from './db.context';
+import { RedisCacheModule } from 'src/common/clients/cache/cache.module';
 
 @Module({
-  imports: [RedisModule],
-  providers: [DbService, RedisSessionStore, DbContext],
+  providers: [DbService, DbContext, RedisCacheModule],
   exports: [DbService, DbContext],
   controllers: [DbController]
 })

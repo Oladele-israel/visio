@@ -6,7 +6,7 @@ import { SchemaModule } from './schema/schema.module';
 import { RelationModule } from './relation/relation.module';
 import { QueryModule } from './query/query.module';
 import { ConfigModule } from '@nestjs/config';
-import { SharedCacheModule } from './cache/cache.module';
+import { RedisCacheModule } from './common/clients/cache/cache.module';
 
 @Module({
   imports: [
@@ -15,7 +15,7 @@ import { SharedCacheModule } from './cache/cache.module';
     RelationModule,
     QueryModule,
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
-    SharedCacheModule,
+    RedisCacheModule,
   ],
   controllers: [AppController],
   providers: [AppService,],
